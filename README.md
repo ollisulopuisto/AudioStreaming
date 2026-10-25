@@ -10,6 +10,7 @@ Under the hood `AudioStreaming` uses `AVAudioEngine` and `CoreAudio` for playbac
 - AIFF, AIFC, FLAC, WAVE, CAF, NeXT, ADTS, MPEG Audio Layer 3, AAC audio formats
 - M4A (optimized and non-optimized) from v1.2.0
 - **Ogg Vorbis** (both local and remote files) ✨
+- **Multichannel audio**: 5.1 surround sound support with channel layout mapping (e.g. Ogg 5.1 to MPEG 5.1) ✨
 
 #### Known limitations
 
