@@ -291,12 +291,21 @@ final class OggVorbisStreamProcessor {
     private func createAudioConverter(from sourceFormat: AVAudioFormat, to destFormat: AudioStreamBasicDescription) {
         audioConverter = nil
         
-        var dest = destFormat
+        let dest = destFormat
         
-        guard let destAVFormat = AVAudioFormat(streamDescription: &dest) else {
-            Logger.error("Failed to create output AVAudioFormat", category: .audioRendering)
+        guard let channelLayout = AVAudioChannelLayout(
+            layoutTag: kAudioChannelLayoutTag_MPEG_5_1_A
+        ) else {
+            Logger.error("Failed to create 5.1 output channel layout", category: .audioRendering)
             return
         }
+
+        let destAVFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: dest.mSampleRate,
+            interleaved: true,
+            channelLayout: channelLayout
+        )
         
         guard let converter = AVAudioConverter(from: sourceFormat, to: destAVFormat) else {
             Logger.error("Failed to create AVAudioConverter", category: .audioRendering)

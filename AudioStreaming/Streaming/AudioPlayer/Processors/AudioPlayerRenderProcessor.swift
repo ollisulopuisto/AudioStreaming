@@ -113,7 +113,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         if used > 0 && !waitForBuffer && playingEntry != nil && state.contains(.running) && state != .paused {
             if end > start {
                 let framesToCopy = min(inNumberFrames, used)
-                bufferList.mBuffers.mNumberChannels = 2
+                bufferList.mBuffers.mNumberChannels = outputAudioFormat.mChannelsPerFrame
                 bufferList.mBuffers.mDataByteSize = frameSizeInBytes * framesToCopy
 
                 if isMuted {
@@ -155,7 +155,7 @@ final class AudioPlayerRenderProcessor: NSObject {
                     #endif
                     frameToCopy = 0
                 }
-                bufferList.mBuffers.mNumberChannels = 2
+                bufferList.mBuffers.mNumberChannels = outputAudioFormat.mChannelsPerFrame
                 bufferList.mBuffers.mDataByteSize = frameSizeInBytes * frameToCopy
 
                 if isMuted {
@@ -172,7 +172,7 @@ final class AudioPlayerRenderProcessor: NSObject {
                 let delta = inNumberFrames - frameToCopy
                 if delta > 0 {
                     moreFramesToCopy = min(delta, end)
-                    bufferList.mBuffers.mNumberChannels = 2
+                    bufferList.mBuffers.mNumberChannels = outputAudioFormat.mChannelsPerFrame
                     bufferList.mBuffers.mDataByteSize += frameSizeInBytes * moreFramesToCopy
                     if let ioBufferData = bufferList.mBuffers.mData {
                         if isMuted {

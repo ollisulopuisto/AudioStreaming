@@ -120,6 +120,11 @@ final class VorbisFileDecoder {
             switch channels {
             case 1: layoutTag = kAudioChannelLayoutTag_Mono
             case 2: layoutTag = kAudioChannelLayoutTag_Stereo
+            // Vorbis uses FL, FC, FR, RL, RR, LFE channel order. The MPEG
+            // 5.1 layout instead expects FL, FR, FC, LFE, RL, RR, so tagging
+            // Vorbis PCM as MPEG 5.1 misidentifies four of the six channels.
+            // Ogg_5_1 describes the channel order emitted by the Vorbis decoder.
+            case 6: layoutTag = kAudioChannelLayoutTag_Ogg_5_1
             default: layoutTag = kAudioChannelLayoutTag_Unknown | UInt32(channels)
             }
             

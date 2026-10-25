@@ -244,8 +244,45 @@ final class AudioFileStreamProcessor {
                 return
             }
         }
+        configureChannelLayouts(for: audioConverter, inputChannels: inputFormat.mChannelsPerFrame)
         self.inputFormat = inputFormat
         assignMagicCookieToConverterIfNeeded()
+    }
+
+    private func configureChannelLayouts(
+        for converter: AudioConverterRef?,
+        inputChannels: UInt32
+    ) {
+        guard let converter else { return }
+
+        if let inputLayoutTag = channelLayoutTag(for: inputChannels),
+           let inputLayout = AVAudioChannelLayout(layoutTag: inputLayoutTag) {
+            AudioConverterSetProperty(
+                converter,
+                kAudioConverterInputChannelLayout,
+                UInt32(MemoryLayout<AudioChannelLayout>.size),
+                inputLayout.layout
+            )
+        }
+
+        guard let outputLayout = AVAudioChannelLayout(
+            layoutTag: kAudioChannelLayoutTag_MPEG_5_1_A
+        ) else { return }
+        AudioConverterSetProperty(
+            converter,
+            kAudioConverterOutputChannelLayout,
+            UInt32(MemoryLayout<AudioChannelLayout>.size),
+            outputLayout.layout
+        )
+    }
+
+    private func channelLayoutTag(for channelCount: UInt32) -> AudioChannelLayoutTag? {
+        return switch channelCount {
+        case 1: kAudioChannelLayoutTag_Mono
+        case 2: kAudioChannelLayoutTag_Stereo
+        case 6: kAudioChannelLayoutTag_MPEG_5_1_A
+        default: nil
+        }
     }
 
     private func assignMagicCookieToConverterIfNeeded() {

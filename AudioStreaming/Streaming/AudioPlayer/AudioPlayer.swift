@@ -146,7 +146,15 @@ open class AudioPlayer {
     }
 
     /// An `AVAudioFormat` object for the canonical audio stream
-    private var outputAudioFormat: AVAudioFormat = .init(commonFormat: .pcmFormatFloat32, sampleRate: 44100.0, channels: 2, interleaved: true)!
+    private let outputAudioFormat: AVAudioFormat = {
+        let channelLayout = AVAudioChannelLayout(layoutTag: kAudioChannelLayoutTag_MPEG_5_1_A)!
+        return AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 44100.0,
+            interleaved: true,
+            channelLayout: channelLayout
+        )
+    }()
 
     /// Keeps track of the player's state before being paused.
     private var stateBeforePaused: InternalState = .initial
