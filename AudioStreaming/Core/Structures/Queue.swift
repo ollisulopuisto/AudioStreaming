@@ -26,76 +26,76 @@
  ```
  */
 final class Queue<Element: Equatable>: Sequence, CustomDebugStringConvertible {
-    private var _storage: [Element] = []
+  private var _storage: [Element] = []
 
-    var isEmpty: Bool { _storage.isEmpty }
+  var isEmpty: Bool { _storage.isEmpty }
 
-    var count: Int { _storage.count }
+  var count: Int { _storage.count }
 
-    var items: [Element] { _storage }
+  var items: [Element] { _storage }
 
-    /// Inserts an item at the end of the queue
-    func enqueue(item: Element) {
-        _storage.insert(item, at: 0)
+  /// Inserts an item at the end of the queue
+  func enqueue(item: Element) {
+    _storage.insert(item, at: 0)
+  }
+
+  /// Removes and returns the last item
+  func dequeue() -> Element? {
+    guard !isEmpty else { return nil }
+    return _storage.removeLast()
+  }
+
+  /// Adds element at the front of the queue
+  func skip(item: Element) {
+    _storage.append(item)
+  }
+
+  /// Adds elements at the front of the queue
+  func skip(items: [Element]) {
+    for item in items {
+      _storage.append(item)
     }
+  }
 
-    /// Removes and returns the last item
-    func dequeue() -> Element? {
-        guard !isEmpty else { return nil }
-        return _storage.removeLast()
+  /// Inserts an item at a specific index in the queue
+  func insert(item: Element, at index: Int) {
+    guard index >= 0, index <= count else {
+      fatalError("Index out of range")
     }
+    _storage.insert(item, at: index)
+  }
 
-    /// Adds element at the front of the queue
-    func skip(item: Element) {
-        _storage.append(item)
+  func remove(item: Element) {
+    guard let index = _storage.firstIndex(of: item) else {
+      return
     }
+    _storage.remove(at: index)
+  }
 
-    /// Adds elements at the front of the queue
-    func skip(items: [Element]) {
-        for item in items {
-            _storage.append(item)
-        }
+  /// Removes the item at the specified index in the queue
+  @discardableResult
+  func remove(at index: Int) -> Element? {
+    guard index >= 0, index < count else {
+      return nil
     }
+    return _storage.remove(at: index)
+  }
 
-    /// Inserts an item at a specific index in the queue
-    func insert(item: Element, at index: Int) {
-        guard index >= 0 && index <= count else {
-            fatalError("Index out of range")
-        }
-        _storage.insert(item, at: index)
-    }
+  /// Retrieves the last item
+  func peek() -> Element? {
+    _storage.last
+  }
 
-    func remove(item: Element) {
-        guard let index = _storage.firstIndex(of: item) else {
-            return
-        }
-        _storage.remove(at: index)
-    }
+  /// Revoves all elements
+  func removeAll() {
+    _storage.removeAll()
+  }
 
-    /// Removes the item at the specified index in the queue
-    @discardableResult
-    func remove(at index: Int) -> Element? {
-        guard index >= 0 && index < count else {
-            return nil
-        }
-        return _storage.remove(at: index)
-    }
+  func makeIterator() -> Array<Element>.Iterator {
+    _storage.makeIterator()
+  }
 
-    /// Retrieves the last item
-    func peek() -> Element? {
-        _storage.last
-    }
-
-    /// Revoves all elements
-    func removeAll() {
-        _storage.removeAll()
-    }
-
-    func makeIterator() -> Array<Element>.Iterator {
-        _storage.makeIterator()
-    }
-
-    var debugDescription: String {
-        return "Queue with elements: \(_storage)"
-    }
+  var debugDescription: String {
+    "Queue with elements: \(_storage)"
+  }
 }

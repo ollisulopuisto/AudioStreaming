@@ -10,7 +10,8 @@ Under the hood `AudioStreaming` uses `AVAudioEngine` and `CoreAudio` for playbac
 - AIFF, AIFC, FLAC, WAVE, CAF, NeXT, ADTS, MPEG Audio Layer 3, AAC audio formats
 - M4A (optimized and non-optimized) from v1.2.0
 - **Ogg Vorbis** (both local and remote files) ✨
-- **Multichannel audio**: 5.1 surround sound support with channel layout mapping (e.g. Ogg 5.1 to MPEG 5.1) ✨
+- **Multichannel audio**: 5.1 surround sound support at 48 kHz with channel layout mapping (Ogg 5.1 to MPEG 5.1), discrete engine graph routing to avoid center-channel downmix loss, and dynamic hardware output (`HardwareOutput`) ✨
+- **Exact FLAC seeking**: Frame-level sample locator (`FlacFrameLocator`) for precise seeking in variable-bitrate FLAC streams ✨
 
 # Requirements
  - iOS 15.0+

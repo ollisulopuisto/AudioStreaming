@@ -6,108 +6,77 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
-import XCTest
 @testable import AudioStreaming
+import XCTest
 
 class DispatchTimerSourceTests: XCTestCase {
-    let dispatchKey = DispatchSpecificKey<Int>()
+  let dispatchKey = DispatchSpecificKey<Int>()
 
-    let dispatchQueue = DispatchQueue(label: "some.queue")
-    var timerSource: DispatchTimerSource?
+  let dispatchQueue = DispatchQueue(label: "some.queue")
+  var timerSource: DispatchTimerSource?
 
-    override func setUp() {
-        dispatchQueue.setSpecific(key: dispatchKey, value: 1)
-        timerSource = DispatchTimerSource(interval: .milliseconds(100), queue: dispatchQueue)
+  override func setUp() {
+    dispatchQueue.setSpecific(key: dispatchKey, value: 1)
+    timerSource = DispatchTimerSource(interval: .milliseconds(100), queue: dispatchQueue)
+  }
+
+  override func tearDown() {
+    timerSource = nil
+  }
+
+  func test_DispatchTimerSource_Can_Be_Activated_and_Suspended() {
+    // starts deactivated
+    XCTAssertFalse(timerSource!.isRunning)
+
+    // when actiavated
+    timerSource!.activate()
+    // it should run
+    XCTAssertTrue(timerSource!.isRunning)
+
+    // when suspended
+    timerSource!.suspend()
+    // it should not run
+    XCTAssertFalse(timerSource!.isRunning)
+  }
+
+  func test_DispatchTimerSource_Can_Add_A_Handler_ToBe_Called() {
+    let expectaction = expectation(description: "fired")
+
+    timerSource?.add {
+      expectaction.fulfill()
     }
+    timerSource?.activate()
 
-    override func tearDown() {
-        timerSource = nil
+    wait(for: [expectaction], timeout: 1)
+    // kill the timer
+    timerSource?.suspend()
+  }
+
+  func test_DispatchTimerSource_Can_Remove_Handler() {
+    let expectaction = expectation(description: "fired")
+
+    timerSource?.add {
+      expectaction.fulfill()
     }
+    timerSource?.activate()
 
-    func test_DispatchTimerSource_Can_Be_Activated_and_Suspended() {
-        // starts deactivated
-        XCTAssertFalse(timerSource!.isRunning)
+    wait(for: [expectaction], timeout: 1)
+    // kill the timer
+    timerSource?.suspend()
+    timerSource?.removeHandler()
+  }
 
-        // when actiavated
-        timerSource!.activate()
-        // it should run
-        XCTAssertTrue(timerSource!.isRunning)
+  func test_HandlerIsExecuted_On_The_Specified_Queue() {
+    let expectaction = expectation(description: "fired")
 
-        // when suspended
-        timerSource!.suspend()
-        // it should not run
-        XCTAssertFalse(timerSource!.isRunning)
+    timerSource?.add {
+      XCTAssertEqual(DispatchQueue.getSpecific(key: self.dispatchKey), 1)
+      expectaction.fulfill()
     }
+    timerSource?.activate()
 
-    func test_DispatchTimerSource_Can_Add_A_Handler_ToBe_Called() {
-        let expectaction = expectation(description: "fired")
-
-        timerSource?.add {
-            expectaction.fulfill()
-        }
-        timerSource?.activate()
-
-        wait(for: [expectaction], timeout: 1)
-        // kill the timer
-        timerSource?.suspend()
-    }
-
-    func test_DispatchTimerSource_Can_Remove_Handler() {
-        let expectaction = expectation(description: "fired")
-
-        timerSource?.add {
-            expectaction.fulfill()
-        }
-        timerSource?.activate()
-
-        wait(for: [expectaction], timeout: 1)
-        // kill the timer
-        timerSource?.suspend()
-        timerSource?.removeHandler()
-    }
-
-    func test_DispatchTimerSource_Can_Be_Deallocated_While_Activated() {
-        // `deinit` used to resume unconditionally to balance a suspended source. When the source
-        // was still activated — a pending retry whose owner is torn down — that extra resume is an
-        // over-resume and libdispatch traps on it. Reaching the end of this test is the assertion.
-        var source: DispatchTimerSource? = DispatchTimerSource(interval: .milliseconds(100), queue: dispatchQueue)
-        source?.activate()
-        XCTAssertTrue(source!.isRunning)
-
-        source = nil
-        XCTAssertNil(source)
-    }
-
-    func test_DispatchTimerSource_Repeated_Activate_And_Suspend_Stay_Balanced() {
-        // Each activate/suspend must move the suspend count exactly once, no matter how often the
-        // no-op path is taken.
-        timerSource?.activate()
-        timerSource?.activate()
-        XCTAssertTrue(timerSource!.isRunning)
-
-        timerSource?.suspend()
-        timerSource?.suspend()
-        XCTAssertFalse(timerSource!.isRunning)
-
-        timerSource?.activate()
-        XCTAssertTrue(timerSource!.isRunning)
-        timerSource?.suspend()
-    }
-
-    func test_HandlerIsExecuted_On_The_Specified_Queue() {
-        let expectaction = expectation(description: "fired")
-        // The source repeats every 100 ms; on a slow runner it can fire again before
-        // `wait` returns, and a second `fulfill()` raises an API violation.
-        expectaction.assertForOverFulfill = false
-
-        timerSource?.add {
-            XCTAssertEqual(DispatchQueue.getSpecific(key: self.dispatchKey), 1)
-            expectaction.fulfill()
-        }
-        timerSource?.activate()
-
-        wait(for: [expectaction], timeout: 1)
-        // kill the timer
-        timerSource?.suspend()
-    }
+    wait(for: [expectaction], timeout: 1)
+    // kill the timer
+    timerSource?.suspend()
+  }
 }

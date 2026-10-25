@@ -5,27 +5,31 @@
 
 import Foundation
 
-protocol Parser {
-    associatedtype Input
-    associatedtype Output
+// MARK: - Parser
 
-    func parse(input: Input) -> Output
+protocol Parser {
+  associatedtype Input
+  associatedtype Output
+
+  func parse(input: Input) -> Output
 }
 
 extension Parser {
-    func eraseToAnyParser() -> AnyParser<Input, Output> {
-        AnyParser(self)
-    }
+  func eraseToAnyParser() -> AnyParser<Input, Output> {
+    AnyParser(self)
+  }
 }
 
+// MARK: - AnyParser
+
 struct AnyParser<Input, Output>: Parser {
-    private let _parse: (Input) -> Output
+  private let _parse: (Input) -> Output
 
-    init<P: Parser>(_ parser: P) where P.Input == Input, P.Output == Output {
-        _parse = parser.parse(input:)
-    }
+  init<P: Parser>(_ parser: P) where P.Input == Input, P.Output == Output {
+    self._parse = parser.parse(input:)
+  }
 
-    func parse(input: Input) -> Output {
-        _parse(input)
-    }
+  func parse(input: Input) -> Output {
+    _parse(input)
+  }
 }

@@ -6,8 +6,8 @@
 import Foundation
 
 final class SeekRequest {
-    let lock = UnfairLock()
-    var requested: Bool = false
-    var version = Atomic<Int>(0)
-    var time: Double = 0
+  let lock = UnfairLock()
+  var requested: Bool = false
+  var version = Atomic<Int>(0)
+  var time: Double = 0
 }

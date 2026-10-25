@@ -83,7 +83,7 @@ size_t VFStreamAvailableBytes(VFStreamRef sr) {
 void VFStreamPush(VFStreamRef sr, const uint8_t *data, size_t len) {
     struct VFRemoteStream *s = (struct VFRemoteStream *)sr;
     if (!s || !data || len == 0) return;
-    
+
     pthread_mutex_lock(&s->m);
     size_t written_total = 0;
     while (written_total < len) {
@@ -116,26 +116,26 @@ static size_t read_cb(void *ptr, size_t size, size_t nmemb, void *datasrc) {
     struct VFRemoteStream *s = (struct VFRemoteStream *)datasrc;
     size_t want_bytes = size * nmemb;
     size_t got = 0;
-    
+
     pthread_mutex_lock(&s->m);
     // Read what's available NOW - don't block waiting for more data
     while (got < want_bytes && s->size > 0) {
         size_t chunk = rb_read(s, (uint8_t *)ptr + got, want_bytes - got);
         s->pos += (long long)chunk;
         got += chunk;
-        
+
         if (chunk == 0) break;
         // Allow producer to push more
         pthread_cond_broadcast(&s->cv);
     }
-    
+
     // If nothing available and EOF, we're done
     if (got == 0 && s->eof) {
         // Return 0 to signal EOF to libvorbisfile
     }
-    
+
     pthread_mutex_unlock(&s->m);
-    
+
     return size ? (got / size) : 0;
 }
 
@@ -143,9 +143,9 @@ static size_t read_cb(void *ptr, size_t size, size_t nmemb, void *datasrc) {
 static int seek_cb(void *datasrc, ogg_int64_t offset, int whence) {
     struct VFRemoteStream *s = (struct VFRemoteStream *)datasrc;
     if (!s) return -1;
-    
+
     pthread_mutex_lock(&s->m);
-    
+
     ogg_int64_t new_pos = 0;
     switch (whence) {
         case SEEK_SET:
@@ -161,31 +161,31 @@ static int seek_cb(void *datasrc, ogg_int64_t offset, int whence) {
             pthread_mutex_unlock(&s->m);
             return -1;
     }
-    
+
     // Check if the new position is valid (within available data)
     if (new_pos < 0 || new_pos > s->total_pushed) {
         pthread_mutex_unlock(&s->m);
         return -1; // Can't seek outside available data
     }
-    
+
     // Calculate how much data we've already consumed from the buffer
     long long already_consumed = s->pos - ((long long)s->total_pushed - (long long)s->size);
-    
+
     // Calculate the new head position
     long long pos_delta = new_pos - s->pos;
-    
+
     // For forward seeks, we need to have enough data in the buffer
     if (pos_delta > 0 && pos_delta > (long long)s->size) {
         pthread_mutex_unlock(&s->m);
         return -1; // Not enough data in buffer to seek forward
     }
-    
+
     // For backward seeks, check if that data is still in the buffer
     if (pos_delta < 0 && (-pos_delta) > already_consumed) {
         pthread_mutex_unlock(&s->m);
         return -1; // Data has been discarded from buffer
     }
-    
+
     // Adjust head pointer
     if (pos_delta >= 0) {
         // Forward seek: advance head
@@ -201,7 +201,7 @@ static int seek_cb(void *datasrc, ogg_int64_t offset, int whence) {
         }
         s->size += rewind;
     }
-    
+
     s->pos = new_pos;
     pthread_mutex_unlock(&s->m);
     return 0;
@@ -223,19 +223,19 @@ static long tell_cb(void *datasrc) {
 int VFOpen(VFStreamRef sr, VFFileRef *out_vf) {
     struct VFRemoteStream *s = (struct VFRemoteStream *)sr;
     if (!s || !out_vf) return -1;
-    
+
     OggVorbis_File *vf = (OggVorbis_File *)malloc(sizeof(OggVorbis_File));
     if (!vf) return -1;
-    
+
     ov_callbacks cbs;
     cbs.read_func = read_cb;
     cbs.seek_func = NULL; // Non-seekable streaming (seeking handled at Swift level)
     cbs.close_func = close_cb;
     cbs.tell_func = tell_cb;
-    
+
     int rc = ov_open_callbacks((void *)s, vf, NULL, 0, cbs);
     if (rc < 0) { free(vf); return rc; }
-    
+
     *out_vf = (VFFileRef)vf;
     return 0;
 }
@@ -252,16 +252,16 @@ void VFClear(VFFileRef fr) {
 int VFGetInfo(VFFileRef fr, VFStreamInfo *out_info) {
     OggVorbis_File *vf = (OggVorbis_File *)fr;
     if (!vf || !out_info) return -1;
-    
+
     vorbis_info const *info = ov_info(vf, -1);
     if (!info) return -1;
-    
+
     out_info->sample_rate = info->rate;
     out_info->channels = info->channels;
     out_info->total_pcm_samples = ov_pcm_total(vf, -1);
     out_info->duration_seconds = ov_time_total(vf, -1);
     out_info->bitrate_nominal = info->bitrate_nominal;
-    
+
     return 0;
 }
 
@@ -269,10 +269,10 @@ int VFGetInfo(VFFileRef fr, VFStreamInfo *out_info) {
 long VFReadFloat(VFFileRef fr, float ***out_pcm, int max_frames) {
     OggVorbis_File *vf = (OggVorbis_File *)fr;
     if (!vf || !out_pcm || max_frames <= 0) return -1;
-    
+
     int bitstream = 0;
     long frames = ov_read_float(vf, out_pcm, max_frames, &bitstream);
-    
+
     // Returns: frames read (0 = EOF, <0 = error)
     return frames;
 }
@@ -281,23 +281,23 @@ long VFReadFloat(VFFileRef fr, float ***out_pcm, int max_frames) {
 long VFReadInterleavedFloat(VFFileRef fr, float *dst, int max_frames) {
     OggVorbis_File *vf = (OggVorbis_File *)fr;
     if (!vf || !dst || max_frames <= 0) return -1;
-    
+
     int bitstream = 0;
     float **pcm = NULL;
     long frames = ov_read_float(vf, &pcm, max_frames, &bitstream);
-    
+
     if (frames <= 0) return frames; // 0 EOF, <0 error/hole
-    
+
     vorbis_info const *info = ov_info(vf, -1);
     int ch = info->channels;
-    
+
     // Interleave the PCM data
     for (long f = 0; f < frames; ++f) {
         for (int c = 0; c < ch; ++c) {
             dst[f * ch + c] = pcm[c][f];
         }
     }
-    
+
     return frames;
 }
 
@@ -305,7 +305,7 @@ long VFReadInterleavedFloat(VFFileRef fr, float *dst, int max_frames) {
 int VFSeekTime(VFFileRef fr, double time_seconds) {
     OggVorbis_File *vf = (OggVorbis_File *)fr;
     if (!vf) return -1;
-    
+
     // Use ov_time_seek for time-based seeking
     // Returns 0 on success, nonzero on failure
     return ov_time_seek(vf, time_seconds);
@@ -315,7 +315,7 @@ int VFSeekTime(VFFileRef fr, double time_seconds) {
 int VFIsSeekable(VFFileRef fr) {
     OggVorbis_File *vf = (OggVorbis_File *)fr;
     if (!vf) return 0;
-    
+
     // Returns nonzero if the stream is seekable
     return ov_seekable(vf);
 }
