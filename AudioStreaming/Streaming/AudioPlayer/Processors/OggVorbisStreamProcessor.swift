@@ -33,9 +33,17 @@ final class OggVorbisStreamProcessor {
     private let rendererContext: AudioRendererContext
     private let outputAudioFormat: AudioStreamBasicDescription
     
+
     private let vfDecoder = VorbisFileDecoder()
     private var isInitialized = false
     
+    // Header caching for seeking
+    private var headerCache = Data()
+    private var isHeaderCacheComplete = false
+    private let maxHeaderCacheSize = 65536
+    private var isRecoveringFromSeek = false
+
+
     // Audio converter for format conversion
     private var audioConverter: AVAudioConverter?
     
@@ -91,10 +99,22 @@ final class OggVorbisStreamProcessor {
         
         dataChunkCount += 1
         
+        if !isHeaderCacheComplete && !isRecoveringFromSeek {
+            headerCache.append(data)
+            if headerCache.count >= maxHeaderCacheSize {
+                isHeaderCacheComplete = true
+            }
+        }
+
         if !isInitialized {
             vfDecoder.create(capacityBytes: 2_097_152)
             isInitialized = true
             totalFramesProcessed = 0
+
+            if isRecoveringFromSeek && !headerCache.isEmpty {
+                vfDecoder.push(headerCache)
+                isRecoveringFromSeek = false
+            }
         }
         
         vfDecoder.push(data)
@@ -456,7 +476,46 @@ final class OggVorbisStreamProcessor {
     /// Note: Future enhancement could support seeking in local files
     /// by fetching headers and using libvorbisfile's built-in seeking.
     func processSeek() {
-        // Seeking not supported - UI should check AudioPlayer.isSeekable
+        guard let readingEntry = playerContext.audioReadingEntry else { return }
+
+        guard readingEntry.calculatedBitrate() > 0.0 || (playerContext.audioPlayingEntry?.length ?? 0) > 0 else {
+            return
+        }
+
+        let dataOffset = Double(readingEntry.audioStreamState.dataOffset)
+        let dataLengthInBytes = Double(readingEntry.audioDataLengthBytes())
+        let entryDuration = readingEntry.duration()
+        let duration = entryDuration < readingEntry.progress && entryDuration > 0 ? readingEntry.progress : entryDuration
+
+        guard duration > 0.0 else { return }
+
+        var seekByteOffset = Int64(dataOffset + (readingEntry.seekRequest.time / duration) * dataLengthInBytes)
+
+        if seekByteOffset > readingEntry.length - (2 * Int(readingEntry.processedPacketsState.bufferSize)) {
+            seekByteOffset = Int64(readingEntry.length - (2 * Int(readingEntry.processedPacketsState.bufferSize)))
+        }
+
+        readingEntry.lock.lock()
+        readingEntry.seekTime = readingEntry.seekRequest.time
+        readingEntry.lock.unlock()
+
+        // Freeze cache
+        isHeaderCacheComplete = true
+        isRecoveringFromSeek = true
+
+        vfDecoder.destroy()
+        isInitialized = false
+        totalFramesProcessed = 0
+
+        if let converted = audioConverter {
+            converted.reset()
+        }
+
+        readingEntry.reset()
+        readingEntry.seek(at: Int(seekByteOffset))
+        rendererContext.waitingForDataAfterSeekFrameCount.write { $0 = 0 }
+        playerContext.setInternalState(to: .waitingForDataAfterSeek)
+        rendererContext.resetBuffers()
     }
     
     // MARK: - Helper Methods

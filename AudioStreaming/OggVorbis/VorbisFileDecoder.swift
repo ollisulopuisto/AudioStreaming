@@ -169,7 +169,18 @@ final class VorbisFileDecoder {
         // Read deinterleaved frames directly
         let maxFrames = min(frameCount, Int(buffer.frameCapacity))
         var pcmChannels: UnsafeMutablePointer<UnsafeMutablePointer<Float>?>?
-        let framesRead = Int(VFReadFloat(vf, &pcmChannels, Int32(maxFrames)))
+
+        var framesRead = 0
+        var retryCount = 0
+
+        while framesRead <= 0 && retryCount < 10 {
+            framesRead = Int(VFReadFloat(vf, &pcmChannels, Int32(maxFrames)))
+            if framesRead < 0 {
+                retryCount += 1
+            } else {
+                break
+            }
+        }
         
         // If no frames were read, generate silent frames instead of returning 0
         if framesRead <= 0 {

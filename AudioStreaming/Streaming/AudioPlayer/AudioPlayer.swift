@@ -98,7 +98,6 @@ open class AudioPlayer {
     /// Indicates whether seeking is supported for the currently playing audio
     ///
     /// Returns `false` if:
-    /// - The audio format doesn't support seeking (e.g., Ogg Vorbis streams)
     /// - The stream has no valid duration (e.g., live radio streams)
     ///
     /// Use this property to enable/disable seek controls in your UI
@@ -110,10 +109,6 @@ open class AudioPlayer {
         playerContext.entriesLock.unlock()
         guard let entry = playingEntry else { return true }
         
-        // Check if format supports seeking (Ogg Vorbis doesn't)
-        if entry.audioFileHint == kAudioFileOggType {
-            return false
-        }
         
         // Check if stream has a valid duration (live streams don't)
         let entryDuration = entry.duration()

@@ -12,18 +12,6 @@ Under the hood `AudioStreaming` uses `AVAudioEngine` and `CoreAudio` for playbac
 - **Ogg Vorbis** (both local and remote files) ✨
 - **Multichannel audio**: 5.1 surround sound support with channel layout mapping (e.g. Ogg 5.1 to MPEG 5.1) ✨
 
-#### Known limitations
-
-**Ogg Vorbis Seeking:**
-- Seeking is **not supported** for Ogg Vorbis files in the current release
-- This is due to technical challenges with the Ogg container format over HTTP streaming:
-  - Seeking requires finding precise Ogg page boundaries in the stream
-  - The Vorbis decoder needs the full headers (identification, comment, and setup packets) to initialize, which are only available at the beginning of the file
-  - HTTP range requests need to be carefully orchestrated to fetch headers and seek to the correct position
-- Your UI can check `player.isSeekable` to determine if seeking is available for the currently playing file
-- Future releases may add experimental support for seeking using progressive download or intelligent header caching
-
-
 # Requirements
  - iOS 15.0+
  - macOS 13.0+
